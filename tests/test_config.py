@@ -126,3 +126,27 @@ templates:
 
     assert config.model.enabled is False
     assert config.model.api_key_env == "DEEPSEEK_API_KEY"
+
+
+def test_load_config_allows_fractional_delay_minutes_for_testing(tmp_path: Path):
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        """
+mode: observe
+delay_minutes: 0.01
+whitelist: [小号]
+profile: {}
+limits:
+  max_auto_replies_per_contact_per_day: 3
+  min_gap_minutes_per_contact: 120
+templates:
+  profile_intro: "这是自动生成的回复：相关信息如下：{profile_summary}。本人稍后看到后会亲自回复。"
+  receipt_with_summary: "这是自动生成的回复：已收到关于「{summary}」的消息，本人稍后看到后会亲自处理。"
+  receipt_generic: "这是自动生成的回复：消息已收到，本人稍后看到后会亲自回复。"
+""",
+        encoding="utf-8",
+    )
+
+    config = load_config(path)
+
+    assert config.delay_minutes == 0.01

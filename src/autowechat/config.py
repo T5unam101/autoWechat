@@ -57,7 +57,7 @@ class WechatConfig:
 @dataclass(frozen=True)
 class AppConfig:
     mode: str
-    delay_minutes: int
+    delay_minutes: float
     whitelist: set[str]
     profile: Profile
     limits: Limits
@@ -78,7 +78,7 @@ def load_config(path: str | Path) -> AppConfig:
 
     return AppConfig(
         mode=mode,
-        delay_minutes=_positive_int(data.get("delay_minutes", 30), "delay_minutes"),
+        delay_minutes=_positive_float(data.get("delay_minutes", 30), "delay_minutes"),
         whitelist=set(str(name) for name in data.get("whitelist", [])),
         profile=_load_profile(_mapping(data.get("profile", {}), "profile")),
         limits=_load_limits(_mapping(data.get("limits"), "limits")),

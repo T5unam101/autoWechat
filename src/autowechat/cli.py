@@ -25,7 +25,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     simulate_contact.add_argument("--remark-name", dest="contact")
     simulate_contact.add_argument("--contact", dest="contact", help="Alias for --remark-name.")
     simulate.add_argument("--message", required=True)
-    simulate.add_argument("--advance-minutes", type=int, default=30)
+    simulate.add_argument("--advance-minutes", type=float, default=30)
     simulate.add_argument("--use-model", action="store_true")
 
     reply_once = subparsers.add_parser(
@@ -36,7 +36,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     reply_contact.add_argument("--remark-name", dest="contact")
     reply_contact.add_argument("--contact", dest="contact", help="Alias for --remark-name.")
     reply_once.add_argument("--message", required=True)
-    reply_once.add_argument("--advance-minutes", type=int, default=30)
+    reply_once.add_argument("--advance-minutes", type=float, default=30)
     reply_once.add_argument("--use-model", action="store_true")
     reply_once.add_argument("--real-send", action="store_true")
 
