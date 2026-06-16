@@ -21,7 +21,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     simulate = subparsers.add_parser("simulate", help="Simulate one incoming message.")
-    simulate.add_argument("--contact", required=True)
+    simulate_contact = simulate.add_mutually_exclusive_group(required=True)
+    simulate_contact.add_argument("--remark-name", dest="contact")
+    simulate_contact.add_argument("--contact", dest="contact", help="Alias for --remark-name.")
     simulate.add_argument("--message", required=True)
     simulate.add_argument("--advance-minutes", type=int, default=30)
     simulate.add_argument("--use-model", action="store_true")
@@ -30,7 +32,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "wechat-reply-once",
         help="Generate one guarded reply and optionally send it through macOS WeChat.",
     )
-    reply_once.add_argument("--contact", required=True)
+    reply_contact = reply_once.add_mutually_exclusive_group(required=True)
+    reply_contact.add_argument("--remark-name", dest="contact")
+    reply_contact.add_argument("--contact", dest="contact", help="Alias for --remark-name.")
     reply_once.add_argument("--message", required=True)
     reply_once.add_argument("--advance-minutes", type=int, default=30)
     reply_once.add_argument("--use-model", action="store_true")
@@ -40,7 +44,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "wechat-send-test",
         help="Send an explicit disclosure-bearing test message through macOS WeChat.",
     )
-    send_test.add_argument("--contact", required=True)
+    send_contact = send_test.add_mutually_exclusive_group(required=True)
+    send_contact.add_argument("--remark-name", dest="contact")
+    send_contact.add_argument("--contact", dest="contact", help="Alias for --remark-name.")
     send_test.add_argument("--message", required=True)
     send_test.add_argument("--real-send", action="store_true")
 

@@ -2,8 +2,7 @@ mode: observe
 delay_minutes: 30
 
 whitelist:
-  - 张三
-  - 李四
+  - autoWechat测试号
 
 profile:
   name: "曲畅"

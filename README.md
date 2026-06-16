@@ -6,7 +6,7 @@ This version implements the safe, testable core plus a guarded macOS WeChat send
 
 ## Safety Model
 
-- Only whitelisted contacts are eligible.
+- Only whitelisted WeChat remark names are eligible.
 - Group chats are out of scope for the first version.
 - Every reply template must include `这是自动生成的回复`.
 - Replies avoid direct address terms such as `你` and `您`.
@@ -22,7 +22,7 @@ python -m pip install -e ".[dev]"
 cp config.example.yaml config.yaml
 ```
 
-Edit `config.yaml` with whitelist contacts and profile fields.
+Edit `config.yaml` with whitelist remark names and profile fields. The `whitelist` values should match the exact WeChat contact remark name you type into the desktop search box, for example `autoWechat测试号`.
 
 ## DeepSeek Setup
 
@@ -55,7 +55,7 @@ DeepSeek is used through its OpenAI-compatible chat completions API. The default
 PYTHONPATH=src python -m autowechat.cli \
   --config config.yaml \
   simulate \
-  --contact 张三 \
+  --remark-name autoWechat测试号 \
   --message "通知一下，周五会议改到下午三点" \
   --advance-minutes 30
 ```
@@ -63,7 +63,7 @@ PYTHONPATH=src python -m autowechat.cli \
 Example output:
 
 ```json
-{"status": "would_send", "contact": "张三", "reply": "这是自动生成的回复：已收到关于「周五会议」的消息，本人稍后看到后会亲自处理。", "reason": ""}
+{"status": "would_send", "contact": "autoWechat测试号", "reply": "这是自动生成的回复：已收到关于「周五会议」的消息，本人稍后看到后会亲自处理。", "reason": ""}
 ```
 
 Force DeepSeek for one simulation even if `model.enabled` is false:
@@ -72,7 +72,7 @@ Force DeepSeek for one simulation even if `model.enabled` is false:
 PYTHONPATH=src python -m autowechat.cli \
   --config config.yaml \
   simulate \
-  --contact 张三 \
+  --remark-name autoWechat测试号 \
   --message "通知一下，周五会议改到下午三点" \
   --advance-minutes 30 \
   --use-model
@@ -85,10 +85,11 @@ If DeepSeek fails or returns invalid JSON, the engine falls back to local rules.
 Before real sending:
 
 1. Open WeChat desktop for macOS and sign in.
-2. Add the test account display name to `whitelist` in `config.yaml`.
-3. Grant Terminal, iTerm, or the app running Python macOS Accessibility permission:
+2. Set a unique WeChat remark name for the test account, such as `autoWechat测试号`.
+3. Add that exact remark name to `whitelist` in `config.yaml`.
+4. Grant Terminal, iTerm, or the app running Python macOS Accessibility permission:
    `System Settings -> Privacy & Security -> Accessibility`.
-4. Keep the WeChat app unlocked and visible during tests.
+5. Keep the WeChat app unlocked and visible during tests.
 
 Send one generated auto-reply to a whitelisted contact:
 
@@ -96,7 +97,7 @@ Send one generated auto-reply to a whitelisted contact:
 PYTHONPATH=src python -m autowechat.cli \
   --config config.yaml \
   wechat-reply-once \
-  --contact 张三 \
+  --remark-name autoWechat测试号 \
   --message "通知一下，周五会议改到下午三点" \
   --advance-minutes 30 \
   --use-model \
@@ -111,7 +112,7 @@ Send an explicit disclosure-bearing test message:
 PYTHONPATH=src python -m autowechat.cli \
   --config config.yaml \
   wechat-send-test \
-  --contact 张三 \
+  --remark-name autoWechat测试号 \
   --message "这是自动生成的回复：消息已收到，本人稍后看到后会亲自回复。" \
   --real-send
 ```
