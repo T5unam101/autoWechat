@@ -3,6 +3,8 @@ from datetime import datetime
 from autowechat.config import AppConfig, Limits, Profile, ReplyTemplates
 from autowechat.engine import AutoReplyEngine
 from autowechat.events import IncomingMessage, ManualReply
+from autowechat.model import ModelDecisionError
+from autowechat.reply import ReplyDecision
 from autowechat.sender import DryRunSender
 
 
@@ -71,3 +73,65 @@ def test_manual_reply_prevents_engine_action():
 
     assert engine.tick(datetime(2026, 6, 15, 12, 35)) == []
     assert sender.sent_messages == []
+
+
+class FakeModelClient:
+    def __init__(self, decision):
+        self.decision = decision
+        self.calls = []
+
+    def classify(self, text):
+        self.calls.append(text)
+        if isinstance(self.decision, Exception):
+            raise self.decision
+        return self.decision
+
+
+def test_enabled_model_decision_overrides_local_summary():
+    config = make_config("observe")
+    config = AppConfig(
+        mode=config.mode,
+        delay_minutes=config.delay_minutes,
+        whitelist=config.whitelist,
+        profile=config.profile,
+        limits=config.limits,
+        templates=config.templates,
+        model=config.model.__class__(enabled=True),
+        wechat=config.wechat,
+    )
+    model = FakeModelClient(ReplyDecision("receipt_with_summary", "项目资料"))
+    engine = AutoReplyEngine(config, DryRunSender(), model_client=model)
+    engine.handle_incoming(
+        IncomingMessage("张三", "发你一个文件", datetime(2026, 6, 15, 12, 0))
+    )
+
+    actions = engine.tick(datetime(2026, 6, 15, 12, 30))
+
+    assert model.calls == ["发你一个文件"]
+    assert "项目资料" in actions[0].reply
+
+
+def test_model_failure_falls_back_to_local_rules():
+    config = make_config("observe")
+    config = AppConfig(
+        mode=config.mode,
+        delay_minutes=config.delay_minutes,
+        whitelist=config.whitelist,
+        profile=config.profile,
+        limits=config.limits,
+        templates=config.templates,
+        model=config.model.__class__(enabled=True),
+        wechat=config.wechat,
+    )
+    engine = AutoReplyEngine(
+        config,
+        DryRunSender(),
+        model_client=FakeModelClient(ModelDecisionError("boom")),
+    )
+    engine.handle_incoming(
+        IncomingMessage("张三", "通知一下，周五会议改到下午三点", datetime(2026, 6, 15, 12, 0))
+    )
+
+    actions = engine.tick(datetime(2026, 6, 15, 12, 30))
+
+    assert "周五会议" in actions[0].reply

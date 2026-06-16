@@ -5,6 +5,7 @@ from datetime import datetime
 
 from autowechat.config import AppConfig, DISCLOSURE
 from autowechat.events import IncomingMessage, ManualReply
+from autowechat.model import ModelDecisionError
 from autowechat.reply import classify_message, render_reply
 from autowechat.sender import SendMessage, Sender
 from autowechat.state import AutoReplyState
@@ -19,9 +20,10 @@ class EngineAction:
 
 
 class AutoReplyEngine:
-    def __init__(self, config: AppConfig, sender: Sender):
+    def __init__(self, config: AppConfig, sender: Sender, model_client=None):
         self.config = config
         self.sender = sender
+        self.model_client = model_client
         self.state = AutoReplyState(
             delay_minutes=config.delay_minutes,
             whitelist=config.whitelist,
@@ -40,7 +42,7 @@ class AutoReplyEngine:
             pending = self.state.pending_for(contact)
             if pending is None:
                 continue
-            reply = render_reply(classify_message(pending.text), self.config)
+            reply = render_reply(self._classify(pending.text), self.config)
             if DISCLOSURE not in reply:
                 self.state.mark_skipped(contact)
                 actions.append(EngineAction("skipped", contact, "", "missing_disclosure"))
@@ -58,3 +60,11 @@ class AutoReplyEngine:
                 self.state.mark_skipped(contact)
                 actions.append(EngineAction("skipped", contact, reply, result.reason))
         return actions
+
+    def _classify(self, text: str):
+        if self.config.model.enabled and self.model_client is not None:
+            try:
+                return self.model_client.classify(text)
+            except ModelDecisionError:
+                pass
+        return classify_message(text)
