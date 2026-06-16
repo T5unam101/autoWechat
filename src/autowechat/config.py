@@ -38,6 +38,23 @@ class ReplyTemplates:
 
 
 @dataclass(frozen=True)
+class ModelConfig:
+    enabled: bool = False
+    provider: str = "deepseek"
+    api_key_env: str = "DEEPSEEK_API_KEY"
+    base_url: str = "https://api.deepseek.com"
+    model: str = "deepseek-v4-flash"
+    thinking: str = "disabled"
+    timeout_seconds: float = 8.0
+
+
+@dataclass(frozen=True)
+class WechatConfig:
+    app_name: str = "WeChat"
+    send_delay_seconds: float = 0.3
+
+
+@dataclass(frozen=True)
 class AppConfig:
     mode: str
     delay_minutes: int
@@ -45,6 +62,8 @@ class AppConfig:
     profile: Profile
     limits: Limits
     templates: ReplyTemplates
+    model: ModelConfig = ModelConfig()
+    wechat: WechatConfig = WechatConfig()
 
 
 def load_config(path: str | Path) -> AppConfig:
@@ -64,6 +83,8 @@ def load_config(path: str | Path) -> AppConfig:
         profile=_load_profile(_mapping(data.get("profile", {}), "profile")),
         limits=_load_limits(_mapping(data.get("limits"), "limits")),
         templates=templates,
+        model=_load_model(_mapping(data.get("model", {}), "model")),
+        wechat=_load_wechat(_mapping(data.get("wechat", {}), "wechat")),
     )
 
 
@@ -118,6 +139,34 @@ def _load_templates(data: dict[str, Any]) -> ReplyTemplates:
         raise ConfigError(f"missing template: {exc.args[0]}") from exc
 
 
+def _load_model(data: dict[str, Any]) -> ModelConfig:
+    provider = str(data.get("provider", "deepseek"))
+    if provider != "deepseek":
+        raise ConfigError("model.provider must be deepseek")
+    thinking = str(data.get("thinking", "disabled"))
+    if thinking not in {"enabled", "disabled"}:
+        raise ConfigError("model.thinking must be enabled or disabled")
+    return ModelConfig(
+        enabled=bool(data.get("enabled", False)),
+        provider=provider,
+        api_key_env=str(data.get("api_key_env", "DEEPSEEK_API_KEY")),
+        base_url=str(data.get("base_url", "https://api.deepseek.com")).rstrip("/"),
+        model=str(data.get("model", "deepseek-v4-flash")),
+        thinking=thinking,
+        timeout_seconds=_positive_float(data.get("timeout_seconds", 8), "model.timeout_seconds"),
+    )
+
+
+def _load_wechat(data: dict[str, Any]) -> WechatConfig:
+    return WechatConfig(
+        app_name=str(data.get("app_name", "WeChat")),
+        send_delay_seconds=_positive_float(
+            data.get("send_delay_seconds", 0.3),
+            "wechat.send_delay_seconds",
+        ),
+    )
+
+
 def _validate_templates(templates: ReplyTemplates) -> None:
     for value in (
         templates.profile_intro,
@@ -135,4 +184,14 @@ def _positive_int(value: Any, name: str) -> int:
         raise ConfigError(f"{name} must be a positive integer") from exc
     if parsed <= 0:
         raise ConfigError(f"{name} must be a positive integer")
+    return parsed
+
+
+def _positive_float(value: Any, name: str) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ConfigError(f"{name} must be a positive number") from exc
+    if parsed <= 0:
+        raise ConfigError(f"{name} must be a positive number")
     return parsed

@@ -21,3 +21,16 @@ templates:
   profile_intro: "这是自动生成的回复：相关信息如下：{profile_summary}。本人稍后看到后会亲自回复。"
   receipt_with_summary: "这是自动生成的回复：已收到关于「{summary}」的消息，本人稍后看到后会亲自处理。"
   receipt_generic: "这是自动生成的回复：消息已收到，本人稍后看到后会亲自回复。"
+
+model:
+  enabled: false
+  provider: deepseek
+  api_key_env: DEEPSEEK_API_KEY
+  base_url: "https://api.deepseek.com"
+  model: deepseek-v4-flash
+  thinking: disabled
+  timeout_seconds: 8
+
+wechat:
+  app_name: WeChat
+  send_delay_seconds: 0.3
