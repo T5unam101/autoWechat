@@ -11,10 +11,9 @@ from autowechat.config import load_config
 from autowechat.engine import AutoReplyEngine
 from autowechat.events import IncomingMessage
 from autowechat.model import DeepSeekDecisionClient
-from autowechat.sender import DryRunSender, SendMessage
+from autowechat.sender import DryRunSender
 from autowechat.watch import WatchRunner
 from autowechat.wechat_monitor import AppleScriptWeChatMonitor
-from autowechat.wechat_sender import AppleScriptWeChatSender
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -81,15 +80,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "wechat-reply-once":
-        if not args.real_send:
-            print("Refusing to access WeChat without --real-send.")
+        if args.real_send:
+            print("Real WeChat sending is disabled for safety. Run without --real-send to inspect the generated reply.")
             return 2
+        if not args.real_send:
+            args.real_send = False
         now = datetime.now()
         config, model_client = _configure_model(config, args.use_model)
-        sender = AppleScriptWeChatSender(
-            app_name=config.wechat.app_name,
-            delay_seconds=config.wechat.send_delay_seconds,
-        )
+        config = replace(config, mode="observe")
+        sender = DryRunSender()
         engine = AutoReplyEngine(config, sender, model_client=model_client)
         engine.handle_incoming(
             IncomingMessage(
@@ -103,32 +102,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "wechat-send-test":
-        if not args.real_send:
-            print("Refusing to access WeChat without --real-send.")
+        if args.real_send:
+            print("Real WeChat sending is disabled for safety. Copy the test message manually instead.")
             return 2
-        sender = AppleScriptWeChatSender(
-            app_name=config.wechat.app_name,
-            delay_seconds=config.wechat.send_delay_seconds,
-        )
-        result = sender.send(SendMessage(contact=args.contact, text=args.message))
-        print(json.dumps(asdict(result), ensure_ascii=False))
-        return 0
+        if not args.real_send:
+            print("Real WeChat sending is disabled for safety. Copy the test message manually instead.")
+            return 2
 
     if args.command == "watch":
+        if args.real_send:
+            print("Real WeChat sending is disabled for safety. Use watch --once or watch without --real-send for observe output.")
+            return 2
         if not args.once and not args.real_send:
-            print("Refusing continuous watch without --once or --real-send.")
+            print("Refusing continuous watch without --once. Real sending is disabled for safety.")
             return 2
         config, model_client = _configure_model(config, args.use_model)
-        if args.real_send and config.mode != "send":
-            config = replace(config, mode="send")
-        sender = (
-            AppleScriptWeChatSender(
-                app_name=config.wechat.app_name,
-                delay_seconds=config.wechat.send_delay_seconds,
-            )
-            if args.real_send
-            else DryRunSender()
-        )
+        config = replace(config, mode="observe")
+        sender = DryRunSender()
         runner = WatchRunner(
             config,
             AppleScriptWeChatMonitor(

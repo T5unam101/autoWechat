@@ -25,15 +25,7 @@ class AppleScriptWeChatSender:
     def send(self, message: SendMessage) -> SendResult:
         if DISCLOSURE not in message.text:
             return SendResult(ok=False, reason="missing_disclosure")
-
-        code, _, stderr = self.runner(
-            ["osascript"],
-            self._script(message.contact, message.text),
-            10,
-        )
-        if code != 0:
-            return SendResult(ok=False, reason=stderr.strip() or "osascript_failed")
-        return SendResult(ok=True)
+        return SendResult(ok=False, reason="real_send_disabled")
 
     def _script(self, contact: str, text: str) -> str:
         contact_literal = json.dumps(contact, ensure_ascii=False)

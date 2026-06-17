@@ -2,7 +2,7 @@
 
 Conservative local auto-reply assistant core for macOS WeChat.
 
-This version implements the safe, testable core plus a guarded macOS WeChat sender for whitelist testing. It can classify messages locally or through DeepSeek, render deterministic disclosure-bearing replies, and send one generated reply to a named WeChat contact when explicitly requested.
+This version implements the safe, testable core plus macOS WeChat observation for whitelist testing. It can classify messages locally or through DeepSeek and render deterministic disclosure-bearing reply drafts. Real keyboard-driven WeChat sending is disabled for safety.
 
 ## Safety Model
 
@@ -11,9 +11,9 @@ This version implements the safe, testable core plus a guarded macOS WeChat send
 - Every reply template must include `这是自动生成的回复`.
 - Replies avoid direct address terms such as `你` and `您`.
 - The core does not upload chat data or call online models.
-- `mode: observe` records what would happen without sending.
+- The app records what would happen without sending.
 - DeepSeek, when enabled, only returns a message type and short summary. It never writes final reply text.
-- Real WeChat access requires an explicit `--real-send` flag.
+- Real keyboard-driven WeChat sending is disabled because macOS focus changes can cause unintended typing.
 
 ## Setup
 
@@ -80,9 +80,9 @@ PYTHONPATH=src python -m autowechat.cli \
 
 If DeepSeek fails or returns invalid JSON, the engine falls back to local rules.
 
-## macOS WeChat Test Sending
+## macOS WeChat Draft Testing
 
-Before real sending:
+Before observing WeChat:
 
 1. Open WeChat desktop for macOS and sign in.
 2. Set a unique WeChat remark name for the test account, such as `autoWechat测试号`.
@@ -91,7 +91,7 @@ Before real sending:
    `System Settings -> Privacy & Security -> Accessibility`.
 5. Keep the WeChat app unlocked and visible during tests.
 
-Send one generated auto-reply to a whitelisted contact:
+Generate one auto-reply draft for a whitelisted contact:
 
 ```bash
 PYTHONPATH=src python -m autowechat.cli \
@@ -100,22 +100,23 @@ PYTHONPATH=src python -m autowechat.cli \
   --remark-name autoWechat测试号 \
   --message "通知一下，周五会议改到下午三点" \
   --advance-minutes 30 \
-  --use-model \
-  --real-send
+  --use-model
 ```
 
-This command creates the same engine event as a 30-minute-old incoming message, generates the guarded reply, then uses AppleScript to activate WeChat, search the contact, paste the reply, and press Return.
+This command creates the same engine event as a 30-minute-old incoming message and prints the guarded reply draft. Copy the reply manually if you want to send it.
 
-Send an explicit disclosure-bearing test message:
+The old `--real-send` path is disabled for safety:
 
 ```bash
 PYTHONPATH=src python -m autowechat.cli \
   --config config.yaml \
-  wechat-send-test \
+  wechat-reply-once \
   --remark-name autoWechat测试号 \
-  --message "这是自动生成的回复：消息已收到，本人稍后看到后会亲自回复。" \
+  --message "通知一下，周五会议改到下午三点" \
   --real-send
 ```
+
+This exits without touching WeChat.
 
 ## Continuous Watcher
 
@@ -131,22 +132,22 @@ PYTHONPATH=src python -m autowechat.cli \
   --use-model
 ```
 
-Run continuous watching with real sending:
+Continuous watch is intentionally dry-run only. It prints generated actions and drafts:
 
 ```bash
 PYTHONPATH=src python -m autowechat.cli \
   --config config.yaml \
   watch \
   --interval-seconds 5 \
-  --use-model \
-  --real-send
+  --once \
+  --use-model
 ```
 
 Important: `watch` searches each whitelisted remark name, reads visible static text from the WeChat window, and treats the latest readable line as the newest message. This is the first Accessibility-based listener and may need adjustment for your WeChat version. Keep `delay_minutes` short while testing with a whitelist test account, then move it back to `30`.
 
 ## Current Boundary
 
-The current listener reads visible WeChat UI text through AppleScript. It does not use private WeChat APIs or local chat databases. Manual-reply detection depends on what the WeChat UI exposes; if the UI cannot distinguish message direction, the watcher behaves conservatively by only responding after the configured delay and per-contact limits.
+The current listener reads visible WeChat UI text through AppleScript. It does not use private WeChat APIs or local chat databases. Real automatic sending is disabled. Manual-reply detection depends on what the WeChat UI exposes; if the UI cannot distinguish message direction, the watcher behaves conservatively by only generating drafts after the configured delay and per-contact limits.
 
 ## Run Tests
 

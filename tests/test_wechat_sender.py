@@ -22,7 +22,7 @@ def test_applescript_sender_rejects_reply_without_disclosure():
     assert runner.calls == []
 
 
-def test_applescript_sender_builds_wechat_script_for_safe_reply():
+def test_applescript_sender_refuses_safe_reply_without_typing():
     runner = FakeRunner()
     sender = AppleScriptWeChatSender(app_name="WeChat", delay_seconds=0.1, runner=runner)
 
@@ -33,10 +33,6 @@ def test_applescript_sender_builds_wechat_script_for_safe_reply():
         )
     )
 
-    assert result.ok
-    args, script, timeout = runner.calls[0]
-    assert args == ["osascript"]
-    assert 'tell application "WeChat" to activate' in script
-    assert 'set contactName to "张三"' in script
-    assert "这是自动生成的回复" in script
-    assert timeout == 10
+    assert not result.ok
+    assert result.reason == "real_send_disabled"
+    assert runner.calls == []

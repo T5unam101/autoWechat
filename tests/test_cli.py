@@ -85,7 +85,7 @@ model:
     assert "would_send" in output
 
 
-def test_cli_wechat_reply_once_requires_real_send_flag(tmp_path: Path, capsys):
+def test_cli_wechat_reply_once_dry_runs_without_real_send(tmp_path: Path, capsys):
     config = tmp_path / "config.yaml"
     config.write_text(
         """
@@ -117,8 +117,45 @@ templates:
     )
 
     output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "would_send" in output
+
+
+def test_cli_wechat_reply_once_rejects_real_send_for_safety(tmp_path: Path, capsys):
+    config = tmp_path / "config.yaml"
+    config.write_text(
+        """
+mode: send
+delay_minutes: 0.01
+whitelist: [小号]
+profile: {}
+limits:
+  max_auto_replies_per_contact_per_day: 3
+  min_gap_minutes_per_contact: 120
+templates:
+  profile_intro: "这是自动生成的回复：相关信息如下：{profile_summary}。本人稍后看到后会亲自回复。"
+  receipt_with_summary: "这是自动生成的回复：已收到关于「{summary}」的消息，本人稍后看到后会亲自处理。"
+  receipt_generic: "这是自动生成的回复：消息已收到，本人稍后看到后会亲自回复。"
+""",
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "--config",
+            str(config),
+            "wechat-reply-once",
+            "--remark-name",
+            "小号",
+            "--message",
+            "aa",
+            "--real-send",
+        ]
+    )
+
+    output = capsys.readouterr().out
     assert exit_code == 2
-    assert "--real-send" in output
+    assert "disabled for safety" in output
 
 
 def test_cli_wechat_reply_once_accepts_remark_name_alias(tmp_path: Path, capsys):
@@ -153,8 +190,8 @@ templates:
     )
 
     output = capsys.readouterr().out
-    assert exit_code == 2
-    assert "--real-send" in output
+    assert exit_code == 0
+    assert "would_send" in output
 
 
 def test_cli_simulate_accepts_fractional_advance_minutes(tmp_path: Path, capsys):
@@ -219,3 +256,29 @@ templates:
     output = capsys.readouterr().out
     assert exit_code == 2
     assert "--once" in output
+
+
+def test_cli_watch_rejects_real_send_for_safety(tmp_path: Path, capsys):
+    config = tmp_path / "config.yaml"
+    config.write_text(
+        """
+mode: observe
+delay_minutes: 0.01
+whitelist: [小号]
+profile: {}
+limits:
+  max_auto_replies_per_contact_per_day: 3
+  min_gap_minutes_per_contact: 120
+templates:
+  profile_intro: "这是自动生成的回复：相关信息如下：{profile_summary}。本人稍后看到后会亲自回复。"
+  receipt_with_summary: "这是自动生成的回复：已收到关于「{summary}」的消息，本人稍后看到后会亲自处理。"
+  receipt_generic: "这是自动生成的回复：消息已收到，本人稍后看到后会亲自回复。"
+""",
+        encoding="utf-8",
+    )
+
+    exit_code = main(["--config", str(config), "watch", "--real-send"])
+
+    output = capsys.readouterr().out
+    assert exit_code == 2
+    assert "disabled for safety" in output
