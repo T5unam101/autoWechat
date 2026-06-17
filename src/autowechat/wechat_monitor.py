@@ -24,11 +24,14 @@ class AppleScriptWeChatMonitor:
     def poll(self, remark_names: list[str]) -> list[ObservedChat]:
         chats: list[ObservedChat] = []
         for remark_name in remark_names:
-            code, stdout, _ = self.runner(
-                ["osascript"],
-                self._script(remark_name),
-                10,
-            )
+            try:
+                code, stdout, _ = self.runner(
+                    ["osascript"],
+                    self._script(remark_name),
+                    10,
+                )
+            except (TimeoutError, subprocess.TimeoutExpired):
+                continue
             if code != 0:
                 continue
             latest_text = _latest_meaningful_line(stdout)

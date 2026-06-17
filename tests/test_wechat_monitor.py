@@ -23,3 +23,12 @@ def test_applescript_wechat_monitor_reads_latest_static_text_for_remark_name():
     assert 'set contactName to "小号"' in script
     assert 'tell application "WeChat" to activate' in script
     assert timeout == 10
+
+
+def test_applescript_wechat_monitor_skips_when_runner_times_out():
+    def timeout_runner(args, input_text, timeout):
+        raise TimeoutError("osascript timed out")
+
+    monitor = AppleScriptWeChatMonitor(runner=timeout_runner)
+
+    assert monitor.poll(["小号"]) == []
