@@ -117,9 +117,36 @@ PYTHONPATH=src python -m autowechat.cli \
   --real-send
 ```
 
+## Continuous Watcher
+
+The watcher polls whitelisted WeChat remark names through macOS UI automation. It is conservative: if the UI text cannot be read, it skips that contact.
+
+Run one observation pass without sending:
+
+```bash
+PYTHONPATH=src python -m autowechat.cli \
+  --config config.yaml \
+  watch \
+  --once \
+  --use-model
+```
+
+Run continuous watching with real sending:
+
+```bash
+PYTHONPATH=src python -m autowechat.cli \
+  --config config.yaml \
+  watch \
+  --interval-seconds 5 \
+  --use-model \
+  --real-send
+```
+
+Important: `watch` searches each whitelisted remark name, reads visible static text from the WeChat window, and treats the latest readable line as the newest message. This is the first Accessibility-based listener and may need adjustment for your WeChat version. Keep `delay_minutes` short while testing with a whitelist test account, then move it back to `30`.
+
 ## Current Boundary
 
-The current WeChat integration is a guarded one-shot sender. It does not yet continuously read incoming WeChat messages or detect manual replies from the live WeChat UI. Continuous monitoring should be added as a separate Accessibility adapter after one-shot sending is validated with a whitelist test account.
+The current listener reads visible WeChat UI text through AppleScript. It does not use private WeChat APIs or local chat databases. Manual-reply detection depends on what the WeChat UI exposes; if the UI cannot distinguish message direction, the watcher behaves conservatively by only responding after the configured delay and per-contact limits.
 
 ## Run Tests
 

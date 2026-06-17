@@ -12,6 +12,8 @@ from autowechat.engine import AutoReplyEngine
 from autowechat.events import IncomingMessage
 from autowechat.model import DeepSeekDecisionClient
 from autowechat.sender import DryRunSender, SendMessage
+from autowechat.watch import WatchRunner
+from autowechat.wechat_monitor import AppleScriptWeChatMonitor
 from autowechat.wechat_sender import AppleScriptWeChatSender
 
 
@@ -49,6 +51,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     send_contact.add_argument("--contact", dest="contact", help="Alias for --remark-name.")
     send_test.add_argument("--message", required=True)
     send_test.add_argument("--real-send", action="store_true")
+
+    watch = subparsers.add_parser(
+        "watch",
+        help="Poll whitelisted WeChat remark names and auto-reply when eligible.",
+    )
+    watch.add_argument("--interval-seconds", type=float, default=5)
+    watch.add_argument("--once", action="store_true")
+    watch.add_argument("--use-model", action="store_true")
+    watch.add_argument("--real-send", action="store_true")
 
     args = parser.parse_args(argv)
     config = load_config(args.config)
@@ -101,6 +112,40 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         result = sender.send(SendMessage(contact=args.contact, text=args.message))
         print(json.dumps(asdict(result), ensure_ascii=False))
+        return 0
+
+    if args.command == "watch":
+        if not args.once and not args.real_send:
+            print("Refusing continuous watch without --once or --real-send.")
+            return 2
+        config, model_client = _configure_model(config, args.use_model)
+        if args.real_send and config.mode != "send":
+            config = replace(config, mode="send")
+        sender = (
+            AppleScriptWeChatSender(
+                app_name=config.wechat.app_name,
+                delay_seconds=config.wechat.send_delay_seconds,
+            )
+            if args.real_send
+            else DryRunSender()
+        )
+        runner = WatchRunner(
+            config,
+            AppleScriptWeChatMonitor(
+                app_name=config.wechat.app_name,
+                delay_seconds=config.wechat.send_delay_seconds,
+            ),
+            sender,
+            model_client=model_client,
+        )
+        if args.once:
+            for action in runner.run_once():
+                print(json.dumps(asdict(action), ensure_ascii=False))
+            return 0
+        runner.run_forever(
+            args.interval_seconds,
+            lambda action: print(json.dumps(asdict(action), ensure_ascii=False), flush=True),
+        )
         return 0
 
     return 2
